@@ -19,6 +19,7 @@ cdk.out.*
 
 # Lambda deps
 infra/lambda/api/node_modules/
+infra/lambda/auth-pre-signup/node_modules/
 
 # OS / IDE
 .vscode/
