@@ -1,0 +1,25 @@
+.DS_Store
+*.log
+
+# Node
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# CDK
+cdk.out/
+cdk.out.*
+
+# Lambda deps
+infra/lambda/api/node_modules/
+
+# OS / IDE
+.vscode/
+.idea/

@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+:root {
+  --bg-cream: #f8f3ea;
+  --bg-sand: #efe1c8;
+  --ink: #1f1a17;
+  --muted: #6b625a;
+  --teal: #136f63;
+  --sunset: #f2b880;
+  --card: #ffffff;
+  --card-border: #e7d8c6;
+}
+
+@theme inline {
+  --color-background: var(--bg-cream);
+  --color-foreground: var(--ink);
+  --font-sans: var(--font-space-grotesk);
+  --font-mono: var(--font-ibm-plex-mono);
+}
+
+body {
+  background: radial-gradient(1200px 600px at 10% -10%, var(--bg-sand), transparent),
+    linear-gradient(180deg, var(--bg-cream), #fdfbf7);
+  color: var(--ink);
+  font-family: var(--font-space-grotesk), system-ui, sans-serif;
+  min-height: 100vh;
+}
+
+html[data-theme="dark"] {
+  --bg-cream: #1c1a18;
+  --bg-sand: #2b2622;
+  --ink: #f4efe8;
+  --muted: #b7a99b;
+  --teal: #3ad0ba;
+  --sunset: #f2b880;
+  --card: #26221f;
+  --card-border: #3a322c;
+}
+
+html[data-theme="dark"] body {
+  background: radial-gradient(1200px 600px at 10% -10%, #2f2a26, transparent),
+    linear-gradient(180deg, #1c1a18, #151312);
+  color: var(--ink);
+}
+
+html[data-theme="dark"] .glass-card {
+  background: rgba(38, 34, 31, 0.85);
+  box-shadow: 0 20px 40px rgba(10, 8, 6, 0.4);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 20px 40px rgba(25, 20, 16, 0.08);
+}
