@@ -1,19 +1,28 @@
 "use client";
 
 import { Authenticator } from "@aws-amplify/ui-react";
-import { getCurrentUser, signInWithRedirect } from "aws-amplify/auth";
+import { fetchAuthSession, getCurrentUser, signInWithRedirect } from "aws-amplify/auth";
+import { Hub } from "aws-amplify/utils";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import LoadingScreen from "@/components/LoadingScreen";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
     let alive = true;
-    (async () => {
+    const checkSession = async () => {
       try {
+        const session = await fetchAuthSession();
+        const hasToken = Boolean(
+          session.tokens?.idToken?.toString() || session.tokens?.accessToken?.toString()
+        );
+        if (!hasToken) {
+          throw new Error("No session tokens");
+        }
         await getCurrentUser();
         if (alive) {
           router.replace("/dashboard");
@@ -21,11 +30,53 @@ export default function LoginPage() {
       } catch (err) {
         if (alive) setChecking(false);
       }
-    })();
+    };
+
+    const unsubscribe = Hub.listen("auth", () => {
+      checkSession();
+    });
+
+    checkSession();
     return () => {
       alive = false;
+      unsubscribe();
     };
   }, [router]);
+
+  useEffect(() => {
+    if (!searchParams) return;
+    const hasCode = Boolean(searchParams.get("code"));
+    if (!hasCode) return;
+
+    let alive = true;
+    let attempts = 0;
+    const maxAttempts = 20;
+
+    const timer = setInterval(async () => {
+      attempts += 1;
+      try {
+        const session = await fetchAuthSession();
+        const hasToken = Boolean(
+          session.tokens?.idToken?.toString() || session.tokens?.accessToken?.toString()
+        );
+        if (hasToken && alive) {
+          clearInterval(timer);
+          router.replace("/dashboard");
+        }
+      } catch (err) {
+        // Keep polling briefly to allow OAuth completion.
+      }
+      if (attempts >= maxAttempts && alive) {
+        clearInterval(timer);
+        setChecking(false);
+      }
+    }, 500);
+
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+  }, [router, searchParams]);
 
   if (checking) {
     return <LoadingScreen label="Loading sign in" />;
@@ -41,15 +92,17 @@ export default function LoginPage() {
         <div className="mt-6">
           <Authenticator />
         </div>
-        <div className="mt-4 flex justify-center">
+        <div className="mt-4 flex items-center justify-center gap-3">
           <button
             className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--card-border)]"
             onClick={async () => {
-              try {
-                await signInWithRedirect({ provider: "Google" });
-              } catch (err) {
-                router.replace("/dashboard");
-              }
+              await signInWithRedirect({
+                provider: "Google",
+                options: {
+                  prompt: "select_account",
+                  scopes: ["openid", "email", "profile", "aws.cognito.signin.user.admin"],
+                },
+              });
             }}
             aria-label="Sign in with Google"
           >
@@ -69,6 +122,25 @@ export default function LoginPage() {
               <path
                 d="M44.5 20H24v8.5h11.8c-1.1 3-3.2 5.4-5.8 7l7.2 5.9C40.7 38.7 46 33.3 46 24c0-1.5-.2-2.7-.5-4z"
                 fill="#1976D2"
+              />
+            </svg>
+          </button>
+          <button
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--card-border)]"
+            onClick={async () => {
+              await signInWithRedirect({
+                provider: "Facebook",
+                options: {
+                  scopes: ["email", "public_profile", "aws.cognito.signin.user.admin"],
+                },
+              });
+            }}
+            aria-label="Sign in with Facebook"
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
+              <path
+                d="M22 12.07C22 6.48 17.52 2 11.93 2S1.86 6.48 1.86 12.07c0 5.05 3.67 9.24 8.47 10.06v-7.12H7.9v-2.94h2.43V9.41c0-2.4 1.43-3.73 3.62-3.73 1.05 0 2.14.19 2.14.19v2.36h-1.21c-1.2 0-1.57.75-1.57 1.52v1.82h2.67l-.43 2.94h-2.24v7.12c4.8-.82 8.47-5.01 8.47-10.06z"
+                fill="#1877F2"
               />
             </svg>
           </button>

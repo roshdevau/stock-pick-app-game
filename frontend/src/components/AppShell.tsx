@@ -4,10 +4,16 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import AuthGate from "@/components/AuthGate";
 import UserMenu from "@/components/UserMenu";
-import { fetchAuthSession, getCurrentUser } from "aws-amplify/auth";
-import { useEffect, useState } from "react";
-import { Hub } from "aws-amplify/utils";
-const navItems = [
+import { useAuth } from "@/components/AuthProvider";
+import { useIsAdmin } from "@/lib/hooks-auth";
+const participantNav = [
+  { href: "/dashboard", label: "Dashboard" },
+  { href: "/trade", label: "Trade" },
+  { href: "/orders", label: "Orders" },
+  { href: "/leaderboard", label: "Leaderboard" },
+];
+
+const adminNav = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/leaderboard", label: "Leaderboard" },
 ];
@@ -21,40 +27,9 @@ export default function AppShell({
   subtitle?: string;
   children: ReactNode;
 }) {
-  const [signedIn, setSignedIn] = useState(false);
-  const [checking, setChecking] = useState(true);
-  const visibleNav = signedIn ? navItems : [];
-
-  useEffect(() => {
-    let alive = true;
-    const checkSession = async () => {
-      try {
-        const session = await fetchAuthSession();
-        const hasToken = Boolean(
-          session.tokens?.idToken?.toString() || session.tokens?.accessToken?.toString()
-        );
-        if (!hasToken) {
-          throw new Error("No session tokens");
-        }
-        await getCurrentUser();
-        if (alive) setSignedIn(true);
-      } catch (err) {
-        if (alive) setSignedIn(false);
-      } finally {
-        if (alive) setChecking(false);
-      }
-    };
-
-    const unsubscribe = Hub.listen("auth", () => {
-      checkSession();
-    });
-
-    checkSession();
-    return () => {
-      alive = false;
-      unsubscribe();
-    };
-  }, []);
+  const { signedIn, checking } = useAuth();
+  const isAdmin = useIsAdmin();
+  const visibleNav = signedIn ? (isAdmin ? adminNav : participantNav) : [];
 
   return (
     <div className="min-h-screen">

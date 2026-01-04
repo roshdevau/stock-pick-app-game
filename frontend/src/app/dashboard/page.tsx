@@ -30,6 +30,17 @@ function AdminDashboard() {
   const [fundingUserId, setFundingUserId] = useState<string | null>(null);
   const [funding, setFunding] = useState({ userId: "", amount: "" });
   const queryClient = useQueryClient();
+  const toggleStatus = useMutation({
+    mutationFn: async (payload: { userId: string; disabled: boolean }) => {
+      if (payload.disabled) {
+        return api.enableUser(payload.userId);
+      }
+      return api.disableUser(payload.userId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    },
+  });
   const fundUser = useMutation({
     mutationFn: api.fundUser,
     onSuccess: () => {
@@ -41,6 +52,9 @@ function AdminDashboard() {
 
   return (
     <AppShell title="Dashboard" subtitle="">
+      <div className="mb-6 rounded-3xl border border-amber-200 bg-amber-100 px-5 py-4 text-sm font-semibold text-amber-900">
+        Logged in Administrator
+      </div>
       <div className="glass-card rounded-3xl p-6">
         <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">Users</p>
         {isLoading ? (
@@ -62,6 +76,7 @@ function AdminDashboard() {
               <div className="text-xs text-[var(--muted)] md:text-right">
                 <p>Cash: ${Number(user.currentCash || 0).toFixed(2)}</p>
                 <p>P&L: ${Number(user.pnl || 0).toFixed(2)}</p>
+                <p>Status: {user.disabled ? "Disabled" : "Active"}</p>
               </div>
               <div className="flex flex-wrap gap-2 text-xs">
                 <button
@@ -71,6 +86,18 @@ function AdminDashboard() {
                   }}
                 >
                   Orders
+                </button>
+                <button
+                  className={`rounded-full border px-3 py-1 font-semibold ${
+                    user.disabled
+                      ? "border-emerald-200 text-emerald-700"
+                      : "border-amber-200 text-amber-800"
+                  }`}
+                  onClick={() =>
+                    toggleStatus.mutate({ userId: user.userId, disabled: user.disabled })
+                  }
+                >
+                  {user.disabled ? "Enable user" : "Disable user"}
                 </button>
                 <button
                   className="rounded-full bg-[var(--ink)] px-3 py-1 font-semibold text-white"

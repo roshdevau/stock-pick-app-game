@@ -67,6 +67,10 @@ export const api = {
   getAdminUsers: () => request("/admin/users"),
   getAdminUserOrders: (userId: string) => request(`/admin/users/${userId}/orders`),
   getAdminUserTransactions: (userId: string) => request(`/admin/users/${userId}/transactions`),
+  disableUser: (userId: string) =>
+    request(`/admin/users/${userId}/disable`, { method: "POST" }),
+  enableUser: (userId: string) =>
+    request(`/admin/users/${userId}/enable`, { method: "POST" }),
   fundUser: (payload: { userId: string; amount: number }) =>
     request("/admin/fund", { method: "POST", body: JSON.stringify(payload) }),
   getQuotes: (symbols: string[]) =>

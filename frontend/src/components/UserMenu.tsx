@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { fetchAuthSession, fetchUserAttributes, getCurrentUser, signOut } from "aws-amplify/auth";
-import { Hub } from "aws-amplify/utils";
+import { signOut } from "aws-amplify/auth";
 import { api } from "@/lib/api";
+import { useAuth } from "@/components/AuthProvider";
 
 const iconOptions = [
   {
@@ -76,67 +76,76 @@ const themeOptions = [
   { id: "dark", label: "Dark" },
 ];
 
-export default function UserMenu() {
-  const [displayName, setDisplayName] = useState("Player");
-  const [signedIn, setSignedIn] = useState(false);
-  const [checking, setChecking] = useState(true);
-  const [open, setOpen] = useState(false);
-  const [avatarId, setAvatarId] = useState("dino");
-  const [theme, setTheme] = useState("light");
-  const menuRef = useRef<HTMLDivElement | null>(null);
-  const isAuthConfigured = Boolean(
-    process.env.NEXT_PUBLIC_AUTH_MODE &&
-      process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID &&
-      process.env.NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID
-  );
+const readStoredPrefs = (key: string) => {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return null;
+    return JSON.parse(raw) as { avatarId?: string; theme?: string } | null;
+  } catch {
+    return null;
+  }
+};
 
-  if (!isAuthConfigured) {
+const writeStoredPrefs = (key: string, prefs: { avatarId?: string; theme?: string }) => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, JSON.stringify(prefs));
+  } catch {
+    // Ignore storage errors to avoid breaking UI.
+  }
+};
+
+export default function UserMenu() {
+  const { signedIn, checking, userName, userId, isConfigured } = useAuth();
+  const prefsKey = useMemo(
+    () => (userId ? `spg.preferences.${userId}` : "spg.preferences"),
+    [userId]
+  );
+  const [displayName, setDisplayName] = useState(userName);
+  const [open, setOpen] = useState(false);
+  const [avatarId, setAvatarId] = useState(() => readStoredPrefs(prefsKey)?.avatarId ?? "dino");
+  const [theme, setTheme] = useState(() => readStoredPrefs(prefsKey)?.theme ?? "light");
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  if (!isConfigured) {
     return null;
   }
 
   useEffect(() => {
+    setDisplayName(userName);
+  }, [userName]);
+
+  useEffect(() => {
+    const stored = readStoredPrefs(prefsKey);
+    if (stored?.avatarId) setAvatarId(stored.avatarId);
+    if (stored?.theme) setTheme(stored.theme);
+  }, [prefsKey]);
+
+  useEffect(() => {
+    if (!signedIn) {
+      setOpen(false);
+      setDisplayName("Player");
+      return;
+    }
+
     let alive = true;
-
-    const hydrateUser = async () => {
-      try {
-        const session = await fetchAuthSession();
-        const hasToken = Boolean(
-          session.tokens?.idToken?.toString() || session.tokens?.accessToken?.toString()
-        );
-        if (!hasToken) {
-          throw new Error("No session tokens");
-        }
-        const user = await getCurrentUser();
-        const attrs = await fetchUserAttributes();
-        const name = attrs.email || user.username || "Player";
-        const profile = await api.getProfile().catch(() => null);
-        if (alive) {
-          setSignedIn(true);
-          setDisplayName(profile?.displayName || name);
-          if (profile?.avatarId) setAvatarId(profile.avatarId);
-          if (profile?.theme) setTheme(profile.theme);
-        }
-      } catch (err) {
-        if (alive) {
-          setSignedIn(false);
-          setDisplayName("Player");
-        }
-      } finally {
-        if (alive) setChecking(false);
-      }
-    };
-
-    const unsubscribe = Hub.listen("auth", () => {
-      hydrateUser();
-    });
-
-    hydrateUser();
+    (async () => {
+      const profile = await api.getProfile().catch(() => null);
+      if (!alive) return;
+      setDisplayName(profile?.displayName || userName);
+      if (profile?.avatarId) setAvatarId(profile.avatarId);
+      if (profile?.theme) setTheme(profile.theme);
+      writeStoredPrefs(prefsKey, {
+        avatarId: profile?.avatarId || avatarId,
+        theme: profile?.theme || theme,
+      });
+    })();
 
     return () => {
       alive = false;
-      unsubscribe();
     };
-  }, []);
+  }, [signedIn, userName, prefsKey, avatarId, theme]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -160,14 +169,14 @@ export default function UserMenu() {
 
   if (checking) {
     return (
-      <div className="h-9 w-24 rounded-full border border-[var(--card-border)] bg-white/80" />
+      <div className="h-9 w-24 rounded-full border border-[var(--card-border)] bg-[var(--card)]/80" />
     );
   }
 
   if (!signedIn) {
     return (
       <a
-        className="rounded-full border border-[var(--card-border)] bg-white/80 px-4 py-2 text-sm font-semibold transition hover:border-[var(--teal)]"
+        className="rounded-full border border-[var(--card-border)] bg-[var(--card)]/80 px-4 py-2 text-sm font-semibold text-[var(--ink)] transition hover:border-[var(--teal)]"
         href="/login"
       >
         Sign in
@@ -178,7 +187,7 @@ export default function UserMenu() {
   return (
     <div ref={menuRef} className="relative">
       <button
-        className="flex items-center gap-2 rounded-full border border-[var(--card-border)] bg-white/80 px-3 py-2 text-sm transition hover:border-[var(--teal)]"
+        className="flex items-center gap-2 rounded-full border border-[var(--card-border)] bg-[var(--card)]/80 px-3 py-2 text-sm text-[var(--ink)] transition hover:border-[var(--teal)]"
         onClick={() => setOpen((prev) => !prev)}
       >
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--bg-sand)]">
@@ -190,7 +199,7 @@ export default function UserMenu() {
       </button>
 
       {open ? (
-        <div className="absolute right-0 z-20 mt-3 w-80 rounded-3xl border border-[var(--card-border)] bg-white/95 p-4 shadow-xl">
+        <div className="absolute right-0 z-20 mt-3 w-80 rounded-3xl border border-[var(--card-border)] bg-[var(--card)]/95 p-4 text-[var(--ink)] shadow-xl">
           <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">User</p>
           <p className="mt-2 text-sm font-semibold">{displayName}</p>
 
@@ -205,6 +214,7 @@ export default function UserMenu() {
                   }`}
                   onClick={() => {
                     setAvatarId(icon.id);
+                    writeStoredPrefs(prefsKey, { avatarId: icon.id, theme });
                     api.updatePreferences({ avatarId: icon.id }).catch(() => {});
                   }}
                   aria-label={icon.label}
@@ -226,6 +236,7 @@ export default function UserMenu() {
                   }`}
                   onClick={() => {
                     setTheme(option.id);
+                    writeStoredPrefs(prefsKey, { avatarId, theme: option.id });
                     api.updatePreferences({ theme: option.id }).catch(() => {});
                   }}
                 >
@@ -241,7 +252,6 @@ export default function UserMenu() {
               onClick={async () => {
                 await signOut().catch(() => {});
                 setOpen(false);
-                setSignedIn(false);
                 window.location.href = "/";
               }}
             >

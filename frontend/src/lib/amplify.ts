@@ -25,7 +25,7 @@ export function configureAmplify() {
             ? {
                 oauth: {
                   domain,
-                  scopes: ["openid", "email", "profile"],
+                  scopes: ["openid", "email", "profile", "aws.cognito.signin.user.admin"],
                   redirectSignIn: normalizeRedirects(redirectSignIn),
                   redirectSignOut: normalizeRedirects(redirectSignOut),
                   responseType: "code",

@@ -55,7 +55,12 @@ export class ApiStack extends cdk.Stack {
     );
     apiHandler.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: ['cognito-idp:AdminListGroupsForUser'],
+        actions: [
+          'cognito-idp:AdminListGroupsForUser',
+          'cognito-idp:ListUsers',
+          'cognito-idp:AdminDisableUser',
+          'cognito-idp:AdminEnableUser',
+        ],
         resources: [props.userPool.userPoolArn],
       })
     );
@@ -149,6 +154,14 @@ export class ApiStack extends cdk.Stack {
         authorizer,
         authorizationType: apigw.AuthorizationType.COGNITO,
       });
+    adminUser.addResource('disable').addMethod('POST', new apigw.LambdaIntegration(apiHandler), {
+      authorizer,
+      authorizationType: apigw.AuthorizationType.COGNITO,
+    });
+    adminUser.addResource('enable').addMethod('POST', new apigw.LambdaIntegration(apiHandler), {
+      authorizer,
+      authorizationType: apigw.AuthorizationType.COGNITO,
+    });
     const adminSymbols = admin.addResource('symbols');
     adminSymbols.addMethod('GET', new apigw.LambdaIntegration(apiHandler), {
       authorizer,

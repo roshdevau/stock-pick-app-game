@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import UserMenu from "@/components/UserMenu";
 
 export default function Home() {
   return (
@@ -20,12 +21,7 @@ export default function Home() {
             Leaderboard
           </Link>
         </nav>
-        <Link
-          href="/login"
-          className="rounded-full bg-[var(--ink)] px-5 py-2 text-sm font-semibold !text-white shadow-sm transition hover:-translate-y-0.5"
-        >
-          Sign in
-        </Link>
+        <UserMenu />
       </header>
 
       <main className="mx-auto grid w-full max-w-6xl gap-10 px-6 pb-24 pt-10 md:grid-cols-[1.1fr_0.9fr]">
